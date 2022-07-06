@@ -20,7 +20,7 @@ gcloud services enable container.googleapis.com \
     cloudbuild.googleapis.com \
     sourcerepo.googleapis.com \
     artifactregistry.googleapis.com \
-    clouddeploy.googleapis.com \
+    # clouddeploy.googleapis.com \
     compute.googleapis.com \
     container.googleapis.com \
     storage.googleapis.com \
@@ -84,8 +84,8 @@ git push google master
 gcloud projects add-iam-policy-binding ${PROJECT_NUMBER} \
     --member=serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com \
     --role=roles/container.developer \
-    --role=roles/source.writer \
-    --role=roles/clouddeploy.jobRunner
+    --role=roles/source.writer
+    # --role=roles/clouddeploy.jobRunner
 
 #### CLONE THE HELLO-CLOUDBUILD-ENV REPO AND CREATE A PRODUCTION BRANCH
 cd ~
@@ -135,23 +135,25 @@ git add .
 git commit -m "Trigger CD pipeline"
 git push google master
 
-#### GRANT THE CLOUD DEPLOY SA THE JOBRUNNER ROLE ####
- gcloud projects add-iam-policy-binding ${PROJECT_NUMBER} \
-     --member=serviceAccount:$(gcloud projects describe ${PROJECT_NUMBER} \
-     --format="value(projectNumber)")-compute@developer.gserviceaccount.com \
-     --role=roles/clouddeploy.jobRunner \
-     --role=roles/container.developer
+# #### GRANT THE CLOUD DEPLOY SA THE JOBRUNNER ROLE ####
+#  gcloud projects add-iam-policy-binding ${PROJECT_NUMBER} \
+#      --member=serviceAccount:$(gcloud projects describe ${PROJECT_NUMBER} \
+#      --format="value(projectNumber)")-compute@developer.gserviceaccount.com \
+#      --role=roles/clouddeploy.jobRunner \
+#      --role=roles/container.developer
 
-#### REGISTER CLOUD DEPLOY DELIVERY PIPELINE ####
-cd ~/cloud-deploy-76/cloud-deploy-demo
-gcloud deploy apply --file=delivery-pipeline.yaml --region=${REGION} && \
-gcloud deploy apply --file=target-dev.yaml --region=${REGION}
+# #### REGISTER CLOUD DEPLOY DELIVERY PIPELINE ####
+# cd ~/cloud-deploy-76/cloud-deploy-demo
+# gcloud deploy apply --file=delivery-pipeline.yaml --region=${REGION} && \
+# gcloud deploy apply --file=target-dev.yaml --region=${REGION}
 
-#### CREATE A RELEASE FOR THE CLOUD DEPLOY DELIVERY PIPELINE ####
-gcloud config set project ${PROJECT_ID}
-gcloud deploy releases create my-release \
---delivery-pipeline=hello-cloudbuild-delivery-pipeline \
---region=${REGION}
+# #### CREATE A RELEASE FOR THE CLOUD DEPLOY DELIVERY PIPELINE ####
+# export PROJECT_ID=$(gcloud config get-value core/project)
+# gcloud config set project $PROJECT_ID
+# gcloud deploy releases create my-release45 \
+# --delivery-pipeline=hello-cloudbuild-delivery-pipeline \
+# --region=${REGION} \
+# --images=us-central1-docker.pkg.dev/$PROJECT_ID/my-repository/hello-cloudbuild
 
 # gcloud config set project ${PROJECT_ID}
 # gcloud deploy releases create my-release \
