@@ -30,9 +30,9 @@ gcloud services enable container.googleapis.com \
     cloudresourcemanager.googleapis.com \
     iam.googleapis.com
 
-#### CREATE A GKE STANDARD CLUSTER ####
-gcloud container clusters create ${GKE_CLUSTER} \
-    --num-nodes 1 --region ${REGION}
+# #### CREATE A GKE STANDARD CLUSTER ####
+# gcloud container clusters create ${GKE_CLUSTER} \
+#     --num-nodes 1 --region ${REGION}
 
 #### CREATE AN ARTIFACT REPOSITORY ####
 gcloud artifacts repositories create ${AR_REPOSITORY} \
@@ -147,7 +147,7 @@ git push google master
      --role=roles/container.developer
 
 #### REGISTER CLOUD DEPLOY DELIVERY PIPELINE ####
-cd ~/
+cd ~/cloud-deploy-76/cloud-deploy-demo
 gcloud deploy apply --file=delivery-pipeline.yaml --region=${REGION} && \
 gcloud deploy apply --file=target-dev.yaml --region=${REGION}
 
@@ -157,10 +157,8 @@ gcloud deploy releases create my-release \
 --delivery-pipeline=hello-cloudbuild-delivery-pipeline \
 --region=${REGION}
 
-# --image=us-central1-docker.pkg.dev/cloud-deploy-354814/my-repository/hello-cloudbuild:d4080a7
-
-# gcloud deploy releases create rel-'$DATE'-'$TIME' \
-#   --delivery-pipeline=hello-cloudbuild-delivery-pipeline \
-#   --region=us-central1 \
-#   --images=image=us-central1-docker.pkg.dev/$PROJECT_ID/my-repository/hello-cloudbuild:${SHORT_SHA}
-# google_cloud_project/us-central1/hello-cloudbuild
+gcloud config set project ${PROJECT_ID}
+gcloud deploy releases create my-release \
+  --delivery-pipeline=hello-cloudbuild-delivery-pipeline \
+  --region=us-central1 \
+#   --build-artifacts=gs://cloud-deploy-354814_clouddeploy_us-central1/source/1657133930.500557-104e499573cb4b4ea54eae66b8448aad.tgz
