@@ -39,10 +39,6 @@ gcloud artifacts repositories create ${AR_REPOSITORY} \
   --repository-format=docker \
   --location=${REGION}
 
-# #### IDENTIFY AUTHOR OF COMMITS
-# git config --global user.email "${GITHUB_USEREMAIL}"
-# git config --global user.name "${GITHUB_USERNAME}"
-
 # CREATE A REPO IN CLOUD SOURCE REPOSITORY
 gcloud source repos create ${CSR_REPOSITORY_APP}
 gcloud source repos create ${CSR_REPOSITORY_ENV}
@@ -135,7 +131,7 @@ cp cloudbuild-trigger-cd.yaml cloudbuild.yaml
 
 ####Commit the modifications and push them to Cloud Source Repositories. Commit the modifications and push them to Cloud Source Repositories.
 cd ~/hello-cloudbuild-app
-git add cloudbuild.yaml
+git add .
 git commit -m "Trigger CD pipeline"
 git push google master
 
@@ -157,8 +153,8 @@ gcloud deploy releases create my-release \
 --delivery-pipeline=hello-cloudbuild-delivery-pipeline \
 --region=${REGION}
 
-gcloud config set project ${PROJECT_ID}
-gcloud deploy releases create my-release \
-  --delivery-pipeline=hello-cloudbuild-delivery-pipeline \
-  --region=us-central1 \
-#   --build-artifacts=gs://cloud-deploy-354814_clouddeploy_us-central1/source/1657133930.500557-104e499573cb4b4ea54eae66b8448aad.tgz
+# gcloud config set project ${PROJECT_ID}
+# gcloud deploy releases create my-release \
+#   --delivery-pipeline=hello-cloudbuild-delivery-pipeline \
+#   --region=us-central1 \
+# #   --build-artifacts=gs://cloud-deploy-354814_clouddeploy_us-central1/source/1657133930.500557-104e499573cb4b4ea54eae66b8448aad.tgz
