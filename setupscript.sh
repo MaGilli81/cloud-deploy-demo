@@ -20,7 +20,6 @@ gcloud services enable container.googleapis.com \
     cloudbuild.googleapis.com \
     sourcerepo.googleapis.com \
     artifactregistry.googleapis.com \
-    # clouddeploy.googleapis.com \
     compute.googleapis.com \
     container.googleapis.com \
     storage.googleapis.com \
@@ -34,6 +33,10 @@ gcloud services enable container.googleapis.com \
 # gcloud container clusters create ${GKE_CLUSTER} \
 #     --num-nodes 1 --region ${REGION}
 
+#### Grab credentials to the GKE cluster
+# gcloud container clusters get-credentials hello-cloudbuild --region ${REGION}--project ${PROJECT_ID}
+
+gcloud container clusters get-credentials hello-cloudbuild --region us-central1 --project cloud-deploy-354814
 #### CREATE AN ARTIFACT REPOSITORY ####
 gcloud artifacts repositories create ${AR_REPOSITORY} \
   --repository-format=docker \
@@ -56,10 +59,12 @@ git clone https://github.com/MaGilli81/gke-gitops-tutorial-cloudbuild \
 
 #### CONFIGURE HELLO-CLOUDBUILD-APP CSR REPO AS THE REMOTE #### 
 cd ~/hello-cloudbuild-app
+PROJECT_ID=$(gcloud config get-value project)
 git remote add google \
     "https://source.developers.google.com/p/${PROJECT_ID}/r/hello-cloudbuild-app"
 
 #### TAG THE HELLO-CLOUDBUILD-APP WITH THE LATEST COMMIT_SHA(THIS IS PICKED UP FROM CLOUD BUILD)####
+cd ~/hello-cloudbuild-app
 COMMIT_ID="$(git rev-parse --short=7 HEAD)"
 gcloud builds submit --tag="us-central1-docker.pkg.dev/${PROJECT_ID}/my-repository/hello-cloudbuild:${COMMIT_ID}" .
 
@@ -68,7 +73,7 @@ gcloud builds submit --tag="us-central1-docker.pkg.dev/${PROJECT_ID}/my-reposito
 gcloud beta builds triggers create cloud-source-repositories \
     --repo=${CSR_REPOSITORY_APP} \
     --branch-pattern=^master$ \
-    --build-config=/cloudbuild.yaml \
+    --build-config=cloudbuild.yaml \
     --name=${TRIGGER_CI}
 
 #### IDENTIFY AUTHOR OF COMMITS
@@ -77,6 +82,13 @@ git config --global user.name "${GITHUB_USERNAME}"
 
 #### PUSH APPLICATION CODE TO THE HELLO-CLOUDBUILD-APP CSR REPO'S MASTER BRANCH TO START THE CI PROCESS
 cd ~/hello-cloudbuild-app
+
+echo "test"
+sed -i 's/Hello World/Hello Cloud Build/g' app.py
+sed -i 's/Hello World/Hello Cloud Build/g' test_app.py
+
+git add .
+git commit -m "initial commit"
 git push google master
 
 #### SERVICE ACCOUNTS ####
@@ -120,14 +132,15 @@ gcloud source repos set-iam-policy \
 #### CREATE CLOUD BUILD TRIGGER FOR CONTINUOS DELIVER PIPELINE FOR HELLO-CLOUDBUILD-APP
 #### CLOUD BUILD CD TRIGGER SHOULD CONTAIN A CLOUD BUILD YAML FILE THAT GRABS THE IMAGE FROM ARTIFACT REGISTRY AND DEPLOYS IT TO GKE, OR CLOUD DEPLOY ####
 gcloud beta builds triggers create cloud-source-repositories \
-    --repo=${CSR_REPOSITORY_ENV} \
-    --branch-pattern=^candidate$ \
+    --repo=hello-cloudbuild-env \
+    --branch-pattern=.* \
     --build-config=/cloudbuild.yaml \
-    --name=${TRIGGER_DEPLOY}
-
+    --name=hello-cloudbuild-deploy
+    
 #### KICK OFF THE CI BY GENERATING A NEW VERSION BY REPLACING THE CLOUDBUILD.YAML FILE WITH THE CLOUDBUILD-TRIGGER-CD.YAML FILE ####
 cd ~/hello-cloudbuild-app
 cp cloudbuild-trigger-cd.yaml cloudbuild.yaml
+
 
 ####Commit the modifications and push them to Cloud Source Repositories. Commit the modifications and push them to Cloud Source Repositories.
 cd ~/hello-cloudbuild-app
