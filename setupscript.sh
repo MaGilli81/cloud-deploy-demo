@@ -2,7 +2,7 @@
 
 #### SET PROJECT VARIABLES ####
 export GITHUB_USERNAME=MaGilli81
-export GITHUB_USEREMAIL=mattgilliam0904@gmail.com  
+export GITHUB_USEREMAIL=mattgilliam0904@gmail.com
 export PROJECT_ID=$(gcloud config get-value core/project)
 export PROJECT_NUMBER="$(gcloud projects describe ${PROJECT_ID} --format='get(projectNumber)')"
 export AR_REPOSITORY=my-repository
@@ -30,13 +30,12 @@ gcloud services enable container.googleapis.com \
     iam.googleapis.com
 
 # #### CREATE A GKE STANDARD CLUSTER ####
-# gcloud container clusters create ${GKE_CLUSTER} \
-#     --num-nodes 1 --region ${REGION}
+gcloud container clusters create ${GKE_CLUSTER} \
+--num-nodes 1 --region ${REGION}
 
-#### Grab credentials to the GKE cluster
-# gcloud container clusters get-credentials hello-cloudbuild --region ${REGION}--project ${PROJECT_ID}
+# #### Grab credentials to the GKE cluster
+# gcloud container clusters get-credentials ${GKE_CLUSTER} --region us-central1 --project ${PROJECT_ID}
 
-gcloud container clusters get-credentials hello-cloudbuild --region us-central1 --project cloud-deploy-354814
 #### CREATE AN ARTIFACT REPOSITORY ####
 gcloud artifacts repositories create ${AR_REPOSITORY} \
   --repository-format=docker \
@@ -54,7 +53,7 @@ gcloud source repos create ${CSR_REPOSITORY_ENV}
 
 #### CLONE A GITHUB REPOSITORY FOR THE HELLO-CLOUDBUILD-APP SOURCE CODE #### 
 cd ~
-git clone https://github.com/MaGilli81/gke-gitops-tutorial-cloudbuild \
+git clone https://github.com/MaGilli81/gke-gitops-tutorial \
     hello-cloudbuild-app
 
 #### CONFIGURE HELLO-CLOUDBUILD-APP CSR REPO AS THE REMOTE #### 
@@ -66,7 +65,7 @@ git remote add google \
 #### TAG THE HELLO-CLOUDBUILD-APP WITH THE LATEST COMMIT_SHA(THIS IS PICKED UP FROM CLOUD BUILD)####
 cd ~/hello-cloudbuild-app
 COMMIT_ID="$(git rev-parse --short=7 HEAD)"
-gcloud builds submit --tag="us-central1-docker.pkg.dev/${PROJECT_ID}/my-repository/hello-cloudbuild:${COMMIT_ID}" .
+gcloud builds submit --tag="us-central1-docker.pkg.dev/${PROJECT_ID}/${AR_REPOSITORY}/hello-cloudbuild:${COMMIT_ID}" .
 
 #### CREATE CLOUD BUILD TRIGGER FOR CONTINUOUS  INTEGRATION PIPELINE FOR HELLO-CLOUDBUILD-APP
 #### CLOUD BUILD CI TRIGGER SHOULD CONTAIN A CLOUD BUILD YAML FILE THAT PACKAGES, CONTAINERIZES AND TAGS AN IMAGE BEFORE PUSHING IMAGE TO ARTIFACT REGISTRY ####
@@ -97,7 +96,6 @@ gcloud projects add-iam-policy-binding ${PROJECT_NUMBER} \
     --member=serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com \
     --role=roles/container.developer \
     --role=roles/source.writer
-    # --role=roles/clouddeploy.jobRunner
 
 #### CLONE THE HELLO-CLOUDBUILD-ENV REPO AND CREATE A PRODUCTION BRANCH
 cd ~
@@ -107,7 +105,7 @@ git checkout -b production
 
 #### Copy the cloudbuild-delivery.yaml file available in the hello-cloudbuild-app repository and commit the change ####
 #### Copy the cloudbuild-delivery.yaml file available in the hello-cloudbuild-app repository and commit the change ####
-cd ~/hello-cloudbuild-env
+cd ../hello-cloudbuild-env
 echo "testing"
 cp ~/hello-cloudbuild-app/cloudbuild-delivery.yaml ~/hello-cloudbuild-env/cloudbuild.yaml
 echo "copying"
@@ -133,10 +131,10 @@ gcloud source repos set-iam-policy \
 #### CLOUD BUILD CD TRIGGER SHOULD CONTAIN A CLOUD BUILD YAML FILE THAT GRABS THE IMAGE FROM ARTIFACT REGISTRY AND DEPLOYS IT TO GKE, OR CLOUD DEPLOY ####
 gcloud beta builds triggers create cloud-source-repositories \
     --repo=hello-cloudbuild-env \
-    --branch-pattern=.* \
-    --build-config=/cloudbuild.yaml \
+    --branch-pattern=^master$ \
+    --build-config=cloudbuild.yaml \
     --name=hello-cloudbuild-deploy
-    
+
 #### KICK OFF THE CI BY GENERATING A NEW VERSION BY REPLACING THE CLOUDBUILD.YAML FILE WITH THE CLOUDBUILD-TRIGGER-CD.YAML FILE ####
 cd ~/hello-cloudbuild-app
 cp cloudbuild-trigger-cd.yaml cloudbuild.yaml
@@ -148,28 +146,28 @@ git add .
 git commit -m "Trigger CD pipeline"
 git push google master
 
-# #### GRANT THE CLOUD DEPLOY SA THE JOBRUNNER ROLE ####
-#  gcloud projects add-iam-policy-binding ${PROJECT_NUMBER} \
-#      --member=serviceAccount:$(gcloud projects describe ${PROJECT_NUMBER} \
-#      --format="value(projectNumber)")-compute@developer.gserviceaccount.com \
-#      --role=roles/clouddeploy.jobRunner \
-#      --role=roles/container.developer
+#### GRANT THE CLOUD DEPLOY SA THE JOBRUNNER ROLE ####
+ gcloud projects add-iam-policy-binding ${PROJECT_NUMBER} \
+     --member=serviceAccount:$(gcloud projects describe ${PROJECT_NUMBER} \
+     --format="value(projectNumber)")-compute@developer.gserviceaccount.com \
+     --role=roles/clouddeploy.jobRunner \
+     --role=roles/container.developer
 
-# #### REGISTER CLOUD DEPLOY DELIVERY PIPELINE ####
-# cd ~/cloud-deploy-76/cloud-deploy-demo
-# gcloud deploy apply --file=delivery-pipeline.yaml --region=${REGION} && \
-# gcloud deploy apply --file=target-dev.yaml --region=${REGION}
+#### REGISTER CLOUD DEPLOY DELIVERY PIPELINE ####
+cd ~/cloud-deploy-demo
+gcloud deploy apply --file=delivery-pipeline.yaml --region=${REGION} && \
+gcloud deploy apply --file=target-dev.yaml --region=${REGION}
 
-# #### CREATE A RELEASE FOR THE CLOUD DEPLOY DELIVERY PIPELINE ####
-# export PROJECT_ID=$(gcloud config get-value core/project)
-# gcloud config set project $PROJECT_ID
-# gcloud deploy releases create my-release45 \
-# --delivery-pipeline=hello-cloudbuild-delivery-pipeline \
-# --region=${REGION} \
-# --images=us-central1-docker.pkg.dev/$PROJECT_ID/my-repository/hello-cloudbuild
+#### CREATE A RELEASE FOR THE CLOUD DEPLOY DELIVERY PIPELINE ####
+export PROJECT_ID=$(gcloud config get-value core/project)
+gcloud config set project $PROJECT_ID
+gcloud deploy releases create my-release45 \
+--delivery-pipeline=hello-cloudbuild-delivery-pipeline \
+--region=${REGION} \
+--images=us-central1-docker.pkg.dev/$PROJECT_ID/my-repository/hello-cloudbuild
 
 # gcloud config set project ${PROJECT_ID}
 # gcloud deploy releases create my-release \
 #   --delivery-pipeline=hello-cloudbuild-delivery-pipeline \
 #   --region=us-central1 \
-# #   --build-artifacts=gs://cloud-deploy-354814_clouddeploy_us-central1/source/1657133930.500557-104e499573cb4b4ea54eae66b8448aad.tgz
+# #   --build-artifacts=gs://$PROJECT_ID_clouddeploy_us-central1/source/1657133930.500557-104e499573cb4b4ea54eae66b8448aad.tgz
